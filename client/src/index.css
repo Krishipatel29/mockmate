@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/* Design tokens - poori app ke colors aur fonts yahin se aate hain.
+   Tailwind mein inhe "bg-paper", "text-ink", "font-display" jaise use karte hain.
+   Theme: pure black "interview room", upar se spotlight padti hai. */
+@theme {
+  --color-paper: #000000; /* page ka background: asli black */
+  --color-card: #0d0d10; /* cards */
+  --color-card-2: #16161b; /* card ke andar ka box */
+  --color-ink: #f4f3ee; /* main text + primary button */
+  --color-on-ink: #000000; /* light (ink) background ke upar ka text */
+  --color-ink-soft: #9a9aa5; /* halka text */
+  --color-line: #25252c; /* borders */
+  --color-marker: #ffe14d; /* highlighter yellow */
+  --color-good: #3ddba9;
+  --color-mid: #f5b843;
+  --color-miss: #ff6b5e;
+
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: "Instrument Sans", system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* body ka apna background nahi, taaki peeche wali roshni dikhe (html black hai) */
+  body {
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: var(--color-marker);
+    color: #000;
+  }
+
+  /* Keyboard se chalane walon ke liye saaf focus ring */
+  :focus-visible {
+    outline: 3px solid var(--color-marker);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+/* Components layer mein rakha taaki Tailwind utilities inhe override kar sakein */
+@layer components {
+  /* Highlighter pen wala effect: text ke neeche peeli line */
+  .marker {
+    background-image: linear-gradient(transparent calc(100% - 3px), var(--color-marker) calc(100% - 3px));
+    background-repeat: no-repeat;
+    padding: 0 2px 3px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  /* Torch effect: mouse jahan ho, card ke us hisse par halki roshni.
+     --mx / --my App.jsx wala code set karta hai. */
+  .spot {
+    position: relative;
+    isolation: isolate;
+  }
+  .spot::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: radial-gradient(
+      320px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.07),
+      transparent 70%
+    );
+  }
+  .spot:hover::before {
+    opacity: 1;
+  }
+
+  /* Reusable button styles */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 999px;
+    font-weight: 600;
+    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+    cursor: pointer;
+  }
+  .btn:active {
+    transform: scale(0.97);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--color-ink);
+    color: var(--color-on-ink);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-marker);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-ink);
+    border: 1.5px solid var(--color-line);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    border-color: var(--color-ink);
+  }
+
+  .field {
+    width: 100%;
+    border: 1.5px solid var(--color-line);
+    background: var(--color-card);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font: inherit;
+    color: var(--color-ink);
+  }
+  .field::placeholder {
+    color: #5f5f69;
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
