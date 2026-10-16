@@ -2,7 +2,7 @@
 
 MockMate is a full-stack MERN application that helps students and freshers practise technical and HR interviews. An AI interviewer generates role-specific questions, evaluates every answer on a 10-point scale, and returns detailed feedback with a model answer. All sessions are saved, and a dashboard tracks progress over time.
 
-**Live demo:** _coming soon_
+**Live demo:** [mockmate-krishi.vercel.app](https://mockmate-krishi.vercel.app)
 
 ---
 
