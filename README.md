@@ -1,125 +1,168 @@
-# MockMate – AI Mock Interview App
+# MockMate – AI Mock Interview Platform
 
-MockMate ek full stack (MERN) web app hai jismein user kisi bhi role ka mock interview deta hai. AI interviewer questions banata hai, user answers likhta hai, aur AI har answer ko 10 mein se score karke feedback aur ideal answer deta hai. Saare interviews save hote hain aur dashboard par progress graph dikhta hai.
+MockMate is a full-stack MERN application that helps students and freshers practise technical and HR interviews. An AI interviewer generates role-specific questions, evaluates every answer on a 10-point scale, and returns detailed feedback with a model answer. All sessions are saved, and a dashboard tracks progress over time.
 
-**Tech stack:** React (Vite), Tailwind CSS, Framer Motion, Recharts, Node.js, Express, MongoDB (Mongoose), JWT, Gemini API
+**Live demo:** _coming soon_
 
 ---
 
-## 1. Folder structure
+## Features
+
+- **AI-generated interviews** – questions tailored to the selected role (React, Node.js, MERN, Java, Python, Data Analyst, DSA, HR or any custom role), difficulty level and length.
+- **Answer-by-answer evaluation** – each answer receives a score, specific feedback and an ideal answer.
+- **Progress dashboard** – interview history, average and best scores, and a score-over-time chart.
+- **Resilient AI layer** – automatic retries and backup models; if the AI service is unavailable, the app falls back to a curated question bank and keyword-based scoring, and the user can request an AI review later.
+- **Secure authentication** – JWT-based login with bcrypt password hashing; users can only access their own interviews.
+- **Animated, responsive UI** – dark theme with spotlight effects, typing animations, an animated score ring and smooth page transitions, built with Framer Motion.
+
+## Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| Frontend | React (Vite), React Router, Tailwind CSS, Framer Motion, Recharts, Axios |
+| Backend | Node.js, Express, Mongoose, JSON Web Tokens, bcrypt |
+| Database | MongoDB (Atlas) |
+| AI | Google Gemini API (`@google/genai`) |
+| Deployment | Vercel (frontend), Render (backend) |
+
+---
+
+## How It Works
+
+```
+React client ──► Express API ──► Gemini API
+                     │
+                     ▼
+                  MongoDB
+```
+
+1. The user selects a role, level and number of questions.
+2. The backend asks Gemini to generate the questions and stores the interview in MongoDB.
+3. The user answers the questions one at a time in the browser.
+4. On submission, all answers are sent to Gemini in a **single batch request** and returned as structured JSON (score, feedback, ideal answer).
+5. Scores are saved and displayed on the result page and the dashboard.
+
+Only two AI calls are made per interview, which keeps latency and API usage low. The API key stays on the server and is never exposed to the browser.
+
+### Fault tolerance
+
+When the AI service is overloaded (e.g. HTTP 503) the backend:
+
+1. Retries the primary model with exponential back-off, then tries the configured backup models, within a 60-second time budget.
+2. If no model responds, serves questions from a built-in question bank and scores answers with a keyword-coverage algorithm, so the interview is never blocked.
+3. Marks the result as *basic scoring*; the user can later click **Get AI review** to have the same answers evaluated by the AI.
+
+---
+
+## API Reference
+
+All `/api/interviews` routes require an `Authorization: Bearer <token>` header.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/signup` | Create an account |
+| POST | `/api/auth/login` | Log in and receive a JWT |
+| POST | `/api/interviews/start` | Generate questions and create an interview |
+| POST | `/api/interviews/:id/submit` | Submit answers and receive scores |
+| POST | `/api/interviews/:id/review` | Re-evaluate a basic-scored interview with AI |
+| GET | `/api/interviews` | List the user's interviews |
+| GET | `/api/interviews/:id` | Get a single interview with its results |
+
+---
+
+## Project Structure
 
 ```
 MockMate/
-├── server/                     ← Backend (Node + Express)
-│   ├── server.js               ← Entry point: DB connect, routes, error handling
-│   ├── config/db.js            ← MongoDB connection
-│   ├── models/
-│   │   ├── User.js             ← User ka schema
-│   │   └── Interview.js        ← Interview + questions ka schema
-│   ├── middleware/auth.js      ← JWT token check (protected routes)
-│   ├── controllers/
-│   │   ├── authController.js       ← signup, login
-│   │   └── interviewController.js  ← start, submit, list, get
-│   ├── routes/                 ← URL ko controller se jodna
-│   ├── services/aiService.js   ← Gemini AI call + retry + backup models + Plan B scoring
-│   ├── services/questionBank.js ← Plan B: role-wise practice questions + ideal answers
-│   └── .env.example
+├── server/
+│   ├── server.js                  # App entry: config check, middleware, routes, error handling
+│   ├── config/db.js               # MongoDB connection
+│   ├── models/                    # User and Interview schemas
+│   ├── middleware/auth.js         # JWT verification
+│   ├── controllers/               # Auth and interview logic
+│   ├── routes/                    # Express routers
+│   └── services/
+│       ├── aiService.js           # Gemini calls, retries, backup models, fallback scoring
+│       └── questionBank.js        # Curated questions and model answers by role
 │
-└── client/                     ← Frontend (React)
+└── client/
     └── src/
-        ├── main.jsx            ← App start, Router, AuthProvider
-        ├── App.jsx             ← Saare routes + page transition
-        ├── index.css           ← Colors, fonts, button styles
-        ├── api/client.js       ← Axios (token apne aap lagta hai)
-        ├── context/AuthContext.jsx  ← Login user ki info
-        ├── utils/score.js      ← Score ka rang aur label
-        ├── components/         ← Navbar, HeroDemo, ScoreRing, TypingText...
-        └── pages/              ← Landing, AuthPage, Setup, Interview, Result, Dashboard
+        ├── api/client.js          # Axios instance with auth interceptor
+        ├── context/AuthContext.jsx
+        ├── components/            # Navbar, ScoreRing, TypingText, HeroDemo, ...
+        └── pages/                 # Landing, Auth, Setup, Interview, Result, Dashboard
 ```
-
-## 2. Backend APIs
-
-| Method | URL | Kaam | Login chahiye? |
-|---|---|---|---|
-| POST | `/api/auth/signup` | Naya account | Nahi |
-| POST | `/api/auth/login` | Login, token milta hai | Nahi |
-| POST | `/api/interviews/start` | AI se questions banwana | Haan |
-| POST | `/api/interviews/:id/submit` | Answers bhejna, AI se score | Haan |
-| GET | `/api/interviews` | Dashboard list | Haan |
-| GET | `/api/interviews/:id` | Ek interview / result | Haan |
-| POST | `/api/interviews/:id/review` | Basic score wale interview ko AI se dobara check karwana | Haan |
-
-**AI sirf 2 baar call hota hai:** ek baar questions banane ke liye, ek baar saare answers ek saath check karne ke liye. Isse free API limit bachti hai.
-
-**AI busy ho to kya hota hai (Plan B):**
-1. Main model ko 3 baar try (beech mein 2s, 4s ka wait), phir backup models (`GEMINI_BACKUP_MODEL`) try hote hain. Sab milake max ~60 second.
-2. Phir bhi jawab na mile to app rukti nahi: questions **practice question bank** se aate hain, aur answers **basic scoring** se check hote hain (answer kitna complete hai + ideal answer ke kitne key points cover kiye).
-3. Result page par **"Get AI review"** button aata hai. AI free hone par wahi answers AI se dobara check ho jaate hain.
 
 ---
 
-## 3. Pehli baar setup (ek hi baar karna hai)
+## Getting Started
 
-### Step A: MongoDB Atlas
-1. mongodb.com/atlas par login karo → **Create** → free (M0) cluster banao.
-2. **Database Access** → ek user banao (username + password yaad rakho).
-3. **Network Access** → **Add IP Address** → "Allow access from anywhere" (0.0.0.0/0).
-4. **Connect** → **Drivers** → connection string copy karo. Usmein `<password>` ki jagah apna password daalo, aur `.net/` ke baad `mockmate` likho.
+### Prerequisites
 
-### Step B: Gemini API key
-1. aistudio.google.com → **Get API key** → **Create API key**.
-2. Key copy karo. Ye key kisi ko mat dena, GitHub par mat daalna.
+- Node.js 18 or later
+- MongoDB (local instance or a MongoDB Atlas cluster)
+- A Gemini API key from [Google AI Studio](https://aistudio.google.com)
 
-### Step C: Backend chalao
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Krishipatel29/mockmate.git
+cd mockmate
+```
+
+### 2. Run the backend
+
 ```bash
 cd server
 npm install
-```
-`server/.env.example` ki copy banao, naam `.env` rakho, aur apni values bharo (MONGO_URI, JWT_SECRET, GEMINI_API_KEY). Phir:
-```bash
+cp .env.example .env    # then fill in your own values
 npm run dev
 ```
-Terminal mein `MongoDB connected` aur `Server running on http://localhost:5000` aana chahiye.
 
-### Step D: Frontend chalao (naya terminal)
+The server starts on `http://localhost:5000`.
+
+### 3. Run the frontend
+
 ```bash
 cd client
 npm install
-```
-`client/.env.example` ki copy banao, naam `.env` rakho. Phir:
-```bash
+cp .env.example .env
 npm run dev
 ```
-Browser mein `http://localhost:5173` kholo. 🎉
 
----
+Open `http://localhost:5173` in your browser.
 
-## 4. Problems aayein to
+### Environment variables
 
-| Problem | Kya karo |
+**server/.env**
+
+| Variable | Description |
 |---|---|
-| `Missing in .env file: ...` | `server/.env` mein wo value bharo |
-| `MongoDB connection failed` | MONGO_URI ka password check karo, Atlas mein Network Access 0.0.0.0/0 hai ya nahi |
-| Terminal mein `503 high demand` | Google ke server par rush hai. App Plan B se chalti rahegi; baad mein "Get AI review" dabao |
-| Terminal mein `404 ... model ... no longer available` | `.env` mein `GEMINI_MODEL` ko error message mein bataye gaye model ke naam se badlo, phir backend restart |
-| Terminal mein `400 / 403 API key` | `.env` mein `GEMINI_API_KEY` dobara check karo (aage-peeche space nahi) |
-| "Cannot reach the server" | Backend wala terminal chal raha hai ya nahi dekho |
+| `PORT` | Server port (default `5000`) |
+| `MONGO_URI` | MongoDB connection string |
+| `JWT_SECRET` | Secret used to sign JWTs |
+| `GEMINI_API_KEY` | Google Gemini API key |
+| `GEMINI_MODEL` | Primary Gemini model |
+| `GEMINI_BACKUP_MODEL` | Comma-separated backup models used when the primary is busy |
+| `AI_FALLBACK` | `true` to enable the question bank and basic scoring fallback |
+| `CLIENT_URL` | Frontend URL allowed by CORS |
+| `AI_MOCK` | `true` to run without calling the AI (development only) |
 
-**Testing mode:** `server/.env` mein `AI_MOCK=true` karoge to bina AI key ke nakli questions aur score aayenge (sirf testing ke liye). Real use mein `false` rakhna.
+**client/.env**
+
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | Backend API base URL, e.g. `http://localhost:5000/api` |
 
 ---
 
-## 5. Live karna (deploy)
+## Deployment
 
-- **Backend → Render.com:** New Web Service → root folder `server` → build `npm install` → start `npm start` → `.env` wali saari values Environment mein daalo (CLIENT_URL mein Vercel wala link).
-- **Frontend → Vercel:** root folder `client` → Environment mein `VITE_API_URL=https://<render-link>/api`. (`vercel.json` already hai, refresh par 404 nahi aayega.)
+- **Backend (Render):** create a Web Service with root directory `server`, build command `npm install` and start command `npm start`. Add the server environment variables, with `CLIENT_URL` set to the Vercel URL.
+- **Frontend (Vercel):** import the repository with root directory `client` and set `VITE_API_URL` to `https://<your-render-service>/api`. The included `vercel.json` handles client-side routing.
 
 ---
 
-## 6. Resume ke liye points
+## Author
 
-- Built **MockMate**, an AI-powered mock interview platform using the MERN stack and the Gemini API that generates role-specific questions and scores answers with feedback.
-- Designed a two-call AI flow (question generation and batch evaluation) with structured JSON responses, reducing API usage per interview.
-- Made the AI layer fault-tolerant with retries, backup models and an offline fallback (practice question bank and keyword-based scoring), so the app keeps working when the AI service is overloaded.
-- Implemented JWT authentication, protected REST APIs and per-user data access in Express and MongoDB.
-- Built an animated React UI with Framer Motion (typing questions, score ring, page transitions) and a progress dashboard with Recharts.
+**Krishi Patel** – [GitHub](https://github.com/Krishipatel29)
